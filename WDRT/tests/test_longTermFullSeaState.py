@@ -1,50 +1,61 @@
+import unittest
 import numpy as np
 import WDRT.shortTermExtreme as ste
 import WDRT.longTermExtreme as lte
 import matplotlib.pyplot as plt
 import h5py
-import os
+from os.path import abspath, dirname, join, isfile
 
+testdir = dirname(abspath(__file__))
+datadir = join(testdir, 'data')
 
-# Load data from example_envSampling.py
-#dataPath = os.path.join('..','..','examples','data')
-print(os.getcwd())
-dataPath = os.path.join('examples','data')
-envFile = h5py.File(os.path.join(dataPath, 'NDBC46022.h5'), 'r')
-Hs_sample = np.array(envFile['Samples_FullSeaState/Hs_SampleFSS'])
-T_sample = np.array(envFile['Samples_FullSeaState/T_SampleFSS'])
-Weight_sample = np.array(envFile['Samples_FullSeaState/Weight_SampleFSS'])
-Hs = np.array(envFile['buoy_Data/Hs'])
-T = np.array(envFile['buoy_Data/Te'])
-Hs_Return = np.array(envFile['ReturnContours/Hs_Return'])
-T_Return = np.array(envFile['ReturnContours/T_Return'])
+class TestLongTermExtreme(unittest.TestCase):
 
-# Load data from modeling (if the cwd is not examples adjust the data path)
-modResFile = h5py.File(os.path.join(dataPath, 'longTerm_FullSeaState.h5'), 'r')
-t = np.array(modResFile['time'])
-tSim = t[-1]
-n = len(modResFile['x'])
-peaks = []
-mmax = []
-x = []
-for ii in range(n):
-    ss = 'ss_%03d' % ii
-    x.append(np.array(modResFile['/x/' + ss]))
-    peaks.append(ste.globalPeaks(t, x[ii])[1])
-    mmax.append(np.max(peaks[ii]))
+    @classmethod
+    def setUpClass(self):
+        pass
+    @classmethod
+    def tearDownClass(self):
+        pass
 
-# Short-term extreme response at each sea state
-tPer = 1 * 60 * 60  # storm period
-x_t = np.linspace(0, 1.5 * np.max(mmax), 100)
-edist = []
-ccdf = []
-for ii in range(n):
-    edist.append(ste.extremeDistribution_WeibullTailFit(
-        x=peaks[ii], x_e=x_t, t_x=tSim, t_st=tPer)[0])
-    ccdf.append(edist[ii].ccdf)
+    def test_longTermExtreme(self):
 
-# Long-term extreme response
-LTS = lte.fullLongTermSurvival(Fr=ccdf, fs=Weight_sample)
+        # Load data from example_envSampling.py
+        envFile = h5py.File(join(datadir, 'NDBC46022.h5'), 'r')
+        Hs_sample = np.array(envFile['Samples_FullSeaState/Hs_SampleFSS'])
+        T_sample = np.array(envFile['Samples_FullSeaState/T_SampleFSS'])
+        Weight_sample = np.array(envFile['Samples_FullSeaState/Weight_SampleFSS'])
+        Hs = np.array(envFile['buoy_Data/Hs'])
+        T = np.array(envFile['buoy_Data/Te'])
+        Hs_Return = np.array(envFile['ReturnContours/Hs_Return'])
+        T_Return = np.array(envFile['ReturnContours/T_Return'])
+
+        # Load data from modeling (if the cwd is not examples adjust the data path)
+        modResFile = h5py.File(join(datadir, 'longTerm_FullSeaState.h5'), 'r')
+        t = np.array(modResFile['time'])
+        tSim = t[-1]
+        n = len(modResFile['x'])
+        peaks = []
+        mmax = []
+        x = []
+        for ii in range(n):
+            ss = 'ss_%03d' % ii
+            x.append(np.array(modResFile['/x/' + ss]))
+            peaks.append(ste.globalPeaks(t, x[ii])[1])
+            mmax.append(np.max(peaks[ii]))
+
+        # Short-term extreme response at each sea state
+        tPer = 1 * 60 * 60  # storm period
+        x_t = np.linspace(0, 1.5 * np.max(mmax), 100)
+        edist = []
+        ccdf = []
+        for ii in range(n):
+            edist.append(ste.extremeDistribution_WeibullTailFit(
+                x=peaks[ii], x_e=x_t, t_x=tSim, t_st=tPer)[0])
+            ccdf.append(edist[ii].ccdf)
+
+        # Long-term extreme response
+        LTS = lte.fullLongTermSurvival(Fr=ccdf, fs=Weight_sample)
 
 ## Plotting
 #plt.figure().canvas.set_window_title('Sea state sampling')
