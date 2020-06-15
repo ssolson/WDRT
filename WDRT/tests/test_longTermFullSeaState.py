@@ -2,12 +2,11 @@ import unittest
 import numpy as np
 import WDRT.shortTermExtreme as ste
 import WDRT.longTermExtreme as lte
-import matplotlib.pyplot as plt
 import h5py
 from os.path import abspath, dirname, join, isfile
 
 testdir = dirname(abspath(__file__))
-datadir = join(testdir, 'data')
+datadir = join(testdir, join('..','..','examples','data'))
 
 class TestLongTermExtreme(unittest.TestCase):
 
