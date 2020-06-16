@@ -2,8 +2,6 @@ import unittest
 import numpy as np
 import scipy.io
 import WDRT.ESSC as ESSC
-import matplotlib.pyplot as plt
-from mpl_toolkits.mplot3d import Axes3D
 import scipy.interpolate as interp
 import WDRT.longTermExtreme as lte
 import WDRT.shortTermExtreme as ste
