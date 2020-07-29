@@ -407,7 +407,7 @@ class EA:
             nb_steps = 1000  # Enter discretization of the circle in the normal space (optional)
             
             # Contour generation
-            Hs_Return, T_Return = pca46022.getContours(Time_SS, Time_r,nb_steps)
+            _Return_BootHs_Return_Boots_Return, T_Return = pca46022.getContours(Time_SS, Time_r,nb_steps)
             
             # Calculate boostrap confidence interval
             contourmean_Hs, contourmean_T = pca46022.bootStrap(boot_size=10)
@@ -416,7 +416,11 @@ class EA:
         n = len(self.buoy.Hs)
         Hs_Return_Boot = np.zeros([self.nb_steps,boot_size])
         T_Return_Boot = np.zeros([self.nb_steps,boot_size])
-        buoycopy = copy.deepcopy(self.buoy);
+        buoycopy = copy.deepcopy(self.buoy)
+
+        HsDict = {}
+        TDict = {}
+
         #creates copies of the data based on how it was modeled.
         for i in range(boot_size):
             boot_inds = np.random.randint(0, high=n, size=n)
@@ -439,7 +443,22 @@ class EA:
                 essccopy = NonParaClaytonCopula(buoycopy, self.Ndata, self.max_T, self.max_Hs)
             elif self.method == "Non-parametric Gumbel Copula":
                 essccopy = NonParaGumbelCopula(buoycopy, self.Ndata, self.max_T, self.max_Hs)
-            Hs_Return_Boot[:,i],T_Return_Boot[:,i] = essccopy.getContours(self.time_ss, self.time_r, self.nb_steps)
+            elif self.method == 'Bivariate KDE':
+                 essccopy = BivariateKDE(buoycopy, self.bw, self.NData, self.logTransform, self.max_T, self.max_Hs)
+                 essccopy.nb_steps = self.nb_steps
+
+            if self.method != 'Bivariate KDE':
+                Hs_Return_Boot[:,i],T_Return_Boot[:,i] = essccopy.getContours(self.time_ss, self.time_r, self.nb_steps)
+            else:
+                print(i) 
+                #Hs_Return_Boot[:,i],T_Return_Boot[:,i] = essccopy.getContours(self.time_ss, self.time_r)
+                Hs_Return_Boot,T_Return_Boot = essccopy.getContours(self.time_ss, self.time_r)
+                HsDict[str(i)] = Hs_Return_Boot
+                TDict[str(i)] = T_Return_Boot
+#       import ipdb; ipdb.set_trace()
+        if self.method == 'Bivariate KDE':
+            Hs_Return_Boot = np.concatenate([v for k,v in sorted(HsDict.items())], 0).reshape(-1,1)
+            T_Return_Boot  = np.concatenate([v for k,v in sorted(TDict.items())], 0).reshape(-1,1)
 
         #finds 95% CI values for wave height and energy
         contour97_5_Hs = np.percentile(Hs_Return_Boot,97.5,axis=1)
@@ -2631,7 +2650,10 @@ class BivariateKDE(EA):
             
             # KDE contour generation example
             Hs_Return, T_Return = BivariateKDE46022.getContours(Time_SS, Time_r)
-        '''       
+        '''      
+        self.time_ss = time_ss
+        self.time_r = time_r
+
         p_f = 1 / (365 * (24 / time_ss) * time_r)
 
         if self.logTransform: 
@@ -2682,7 +2704,6 @@ class BivariateKDE(EA):
                 ftemp = np.multiply(ftemp,fnew)
             f[:,i] = np.dot(weight,ftemp)
 
-
         fhat = f.reshape(100,100)
         vals = plt.contour(pt1,pt2,fhat, levels = [p_f])
         plt.clf()
@@ -2691,9 +2712,10 @@ class BivariateKDE(EA):
         for i,seg in enumerate(vals.allsegs[0]):
             self.Hs_ReturnContours.append(seg[:,1])
             self.T_ReturnContours.append(seg[:,0])
-#        
+        
         self.Hs_ReturnContours = np.transpose(np.asarray(self.Hs_ReturnContours)[0])
         self.T_ReturnContours = np.transpose(np.asarray(self.T_ReturnContours)[0])
+#        import ipdb; ipdb.set_trace()
 #        self.vals = vals    
 #        contourVals = np.empty((0,2))
 #        for seg in vals.allsegs[0]:
